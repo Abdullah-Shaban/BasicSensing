@@ -1,0 +1,3 @@
+#!/bin/bash
+DIR=${0%/*}
+java -cp $DIR/FWLoader.jar FWLoader $@
