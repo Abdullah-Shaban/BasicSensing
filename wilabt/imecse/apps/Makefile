@@ -1,6 +1,6 @@
-INCLUDE_DIR=/users/lwei/GITfolder/wirelessacademy/BasicSensing/wilabt/imecse/include
+INCLUDE_DIR=/usr/local/include
 SOURCE_DIR=.
-LIB_DIR=/users/lwei/GITfolder/wirelessacademy/BasicSensing/wilabt/imecse/lib
+LIB_DIR=/usr/local/lib
 
 INCLUDE_PATHS=-I. -I$(INCLUDE_DIR) -I$(LIB_DIR)
 LIB_PATHS=-L. -L$(LIB_DIR)

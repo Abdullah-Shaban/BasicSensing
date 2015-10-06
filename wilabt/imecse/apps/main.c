@@ -65,7 +65,7 @@ int main (int argc, char* argv[])
 
     // Assign configuration (scan 14 channels for WLAN_G standard) to the sensing engine 
     my_se_config.first_channel = 1;
-    my_se_config.last_channel = 14;
+    my_se_config.last_channel = 12;
     my_se_config.fft_points = 128;
     my_se_config.fe_gain = 80; // Max gain = 100
     my_se_config.se_mode = WLAN_G; // valide mode: FFT_SWEEP, ZIGBEE, BLUETOOTH, WLAN_G...
@@ -79,8 +79,8 @@ int main (int argc, char* argv[])
     assert(result != 0);
 
     //Register stop handeler 
-    signal(SIGINT,seStopHandler); 
-    signal(SIGTERM,seStopHandler);
+    signal(SIGINT,(__sighandler_t) seStopHandler); 
+    signal(SIGTERM,(__sighandler_t) seStopHandler);
     
     //Change the seState to running
     seState = seState_Running;
