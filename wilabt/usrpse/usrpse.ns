@@ -1,0 +1,22 @@
+
+set ns [new Simulator]
+source tb_compat.tcl
+
+#define server 
+set serv2 [$ns node]
+tb-fix-node $serv2 server2 
+tb-set-node-os $serv4 ubu12gnuradio3.7.7
+
+
+#define usrp
+set u2 [$ns node]
+tb-fix-node $u2 usrp2
+$u2 add-desire USRP 1.0
+
+#define link
+set link2 [$ns duplex-link $serv2 $u2 1000000.0kb 0.0ms DropTail]
+tb-set-ip-link $serv2 $link2 192.168.20.1
+tb-set-ip-link $u2 $link2 192.168.20.2
+tb-set-netmask $link2 "255.255.255.0"
+
+$ns run
