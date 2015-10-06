@@ -79,15 +79,15 @@ int main (int argc, char* argv[])
     assert(result != 0);
 
     //Register stop handeler 
-    signal(SIGINT,(__sighandler_t) seStopHandler); 
-    signal(SIGTERM,(__sighandler_t) seStopHandler);
+    //signal(SIGINT,(__sighandler_t) seStopHandler); 
+    //signal(SIGTERM,(__sighandler_t) seStopHandler);
     
     //Change the seState to running
     seState = seState_Running;
 
     //Start the sensing engine
+    fprintf(stdout,"starting ... \n") ;   
     se_start_measurement(se_1_h);
-  
     //Enter the loop 
     while (seState == seState_Running) {
         // Read result from the sensing engine
