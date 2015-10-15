@@ -1,4 +1,4 @@
-Simple sensing example using USRP 
+Simple sensing example using USRP as sensing engine
 ===================
 
 iMinds

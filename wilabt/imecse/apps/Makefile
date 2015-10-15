@@ -1,4 +1,5 @@
 INCLUDE_DIR=/usr/local/include
+#INCLUDE_DIR=../sensing/include
 SOURCE_DIR=.
 LIB_DIR=/usr/local/lib
 
@@ -16,11 +17,11 @@ Objects/%.o: $(SOURCE_DIR)/%.c
 	@echo   ... done.
 	@echo
 	@echo compiling...
-	@gcc $(INCLUDE_PATHS) -c $< -o $@
+	@gcc -g $(INCLUDE_PATHS) -c $< -o $@
 	@echo   ... done.
 	@echo
 	@echo building...
-	@gcc $(LIB_PATHS) $(INCLUDE_PATHS) $@ -lsensing -lswi -lpthread -lm -lusb -o Output/MAIN
+	@gcc -g $(LIB_PATHS) $(INCLUDE_PATHS) $@ -lsensing -lswi -lpthread -lm -lusb -o Output/MAIN
 	@echo   ... done.
 	@echo
 	
