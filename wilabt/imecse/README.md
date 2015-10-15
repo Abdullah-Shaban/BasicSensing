@@ -27,13 +27,13 @@ Usage:
 	* The ns script used to define emulab experiment is 
 
   * To setup the environment variables, run:
-		$ source environment.sh
+	$ source environment.sh
   * To program the sensing engine with WARP front end:
-    	$ ./setupwarpfe.sh 1
+    $ ./setupwarpfe.sh 1
   * Create a binary using the imec sensing engine's C library, an example is provided in the apps folder, to compile the example run:
-		$ cd apps; make 
+	$ cd apps; make 
   * Hopefully the compilation is successful, and now you can run the binary file 'MAIN' in the Output folder as shown below, it will scan the 14 Wi-Fi channels in the 2.4 GHz ISM band
-		$ Output/MAIN 
+	$ Output/MAIN 
 
 
 
