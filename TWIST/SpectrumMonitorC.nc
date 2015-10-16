@@ -1,6 +1,5 @@
 #include "spectrummonitor.h"
 #include <stdio.h>
-#include <UserButton.h>
 #include "message.h"
 #include "app_profile.h"
 
@@ -10,7 +9,6 @@ generic module SpectrumMonitorC(dwell_mode_t DWELL_MODE) {
   uses {
     interface Boot;
     interface Leds;
-    interface Notify<button_state_t> as UserButton;
     interface Queue<message_t*>;
     interface Pool<message_t>;
     interface Alarm<T32khz,uint32_t>;
@@ -26,7 +24,6 @@ generic module SpectrumMonitorC(dwell_mode_t DWELL_MODE) {
     /* serial */
     interface SplitControl as SerialControl;
     interface AMSend as SendSweepData;
-    interface Receive as ReceiveChannelMask;
     interface Packet as SerialPacket;
   }
 }
@@ -40,13 +37,6 @@ implementation {
   norace uint32_t m_seqno;
   norace bool m_overflow2;
   norace bool m_ctrlChannelListen;
-
-  uint16_t ctrlChannels[] = CTRL_CHANNEL_FREQUENCY_VECTOR;
-  uint16_t ctrlChannelIndex;
-  uint16_t m_BANChannelIndex;
-
-  norace bool m_isChannelMaskMsgReady;
-  norace uint8_t m_channelMaskMpdu[sizeof(header_154_t) - 1 + sizeof(cb_channelmask_msg_t) + 2]; // extra 2 for MAC CRC
 
   task void startRxControlTask();
   task void sendDataTask();
@@ -70,7 +60,6 @@ implementation {
 
   event void SerialControl.startDone(error_t err)
   {
-    call UserButton.enable();
     call SpiResource.request();
   }
 
@@ -175,18 +164,6 @@ implementation {
 /*          printf("\n");*/
           post sendDataTask();
 
-          if (NUM_CTRL_CHANNELS) {
-            call CC2420Power.rfOff();
-            ctrlChannelIndex += 1;
-            if (ctrlChannelIndex >= NUM_CTRL_CHANNELS)
-              ctrlChannelIndex = 0;
-            call CC2420Power.setFrequency(ctrlChannels[ctrlChannelIndex]);
-            call CC2420Power.rxOn();
-            call SpiResource.release();
-            m_ctrlChannelListen = TRUE;
-            call Alarm.start(CONTROL_CHANNEL_LISTEN_TIME);
-            return;
-          }
         } else {
           findex = findex + 1;
 /*          call CC2420Power.rfOff();*/
@@ -196,42 +173,12 @@ implementation {
         }
       }
 
-      if (m_isChannelMaskMsgReady) { // send a packet now!
-        call CC2420Power.rfOff();
-        //call CC2420Power.setFrequency(ctrlChannels[m_BANChannelIndex]);
-        call CC2420Power.setFrequency(ctrlChannels[m_BANChannelIndex]);
-        call SpiResource.release();
-        if (call CC2420Tx.loadTXFIFO(m_channelMaskMpdu) != SUCCESS) {
-          call Leds.led0On();
-          call SpiResource.immediateRequest();
-          call CC2420Power.rxOn();
-        }
-      } else
         call Alarm.startAt(call Alarm.getNow(), SAMPLING_PERIOD);
     }
   }
 
   async event bool CC2420Rx.receive(uint8_t *data, uint16_t time, bool isTimeValid, int8_t rssi)
   {
-
-    atomic {
-      uint16_t i,j;
-      int8_t rssiVal = 0;
-
-      cb_channelmask_msg_t mask;
-      mask.type = AM_CB_CHANNELMASK_MSG;
-      m_BANChannelIndex = ctrlChannelIndex;
-      //if (m_BANChannelIndex == 0) mask.data = 2; else mask.data = 1; // toggle between channel 11 and 12
-      j = 0;
-      for (i=0; i<sizeof(m_last_sweep_rssi); i++)
-        if (m_last_sweep_rssi[i] < rssiVal) {
-          rssiVal = m_last_sweep_rssi[i];
-          j = i;
-        }
-      mask.data = 1<<j;
-      signal ReceiveChannelMask.receive(0,&mask,sizeof(cb_channelmask_msg_t));
-    }
-
     return FALSE;
   }
 
@@ -262,45 +209,12 @@ implementation {
         call Leds.led0On();
   }
 
-  event message_t* ReceiveChannelMask.receive(message_t* bufPtr,
-        void* payload, uint8_t len)
-  {
-    // received channel mask reply over serial line
-    header_154_t *header = (header_154_t*) &m_channelMaskMpdu;
-    cb_channelmask_msg_t *maskRadio = (cb_channelmask_msg_t*) ((uint8_t *) header + sizeof(header_154_t));
-
-/*    if (len != sizeof(cb_channelmask_msg_t) || m_isChannelMaskMsgReady) {*/
-    if (m_isChannelMaskMsgReady) {
-      call Leds.led0On();
-      return bufPtr;
-    }
-    m_isChannelMaskMsgReady = TRUE;
-
-    header->length = sizeof(m_channelMaskMpdu);
-    header->fcf = FRAME_TYPE_DATA | (DEST_MODE_SHORT << 8);
-    header->dsn = 0;
-    header->destpan = BROADCAST_ADDRESS;
-    header->dest = BROADCAST_ADDRESS;
-
-    if (len == 2) // old version
-      maskRadio->data = *((nx_uint16_t*) payload);
-    else
-      memcpy(maskRadio, payload, len);
-    maskRadio->type = AM_CB_CHANNELMASK_MSG;
-
-    // message will be sent from Alarm eventhandler above,
-    // which notices that m_isChannelMaskMsgReady is TRUE
-
-    return bufPtr;
-  }
-
   async event void CC2420Tx.loadTXFIFODone(uint8_t *data, error_t error ) {
     call SpiResource.immediateRequest();
     call CC2420Tx.send();
   }
 
   async event void CC2420Tx.sendDone(uint8_t *data, uint16_t time, error_t error) {
-    m_isChannelMaskMsgReady = FALSE;
     call CC2420Power.flushRxFifo();
     call CC2420Power.rxOn();
     if (error == SUCCESS)
@@ -311,21 +225,6 @@ implementation {
   event void CC2420Tx.cancelDone(error_t error) {}
   async event void CC2420Tx.transmissionStarted ( uint8_t *data ) {}
   async event void CC2420Tx.transmittedSFD ( uint32_t time, uint8_t *data ) {}
-
-  /* DEBUGGING: if you press the user button then a cb_repo_query_msg
-   * will be created and sent over the serial line. */
-
-  event void UserButton.notify(button_state_t val)
-  {
-     if (val == BUTTON_PRESSED) {
-       cb_channelmask_msg_t mask;
-       mask.type = AM_CB_CHANNELMASK_MSG;
-       mask.data = 0x0002;
-       signal ReceiveChannelMask.receive(0,&mask,sizeof(cb_channelmask_msg_t));
-       m_isChannelMaskMsgReady = TRUE;
-     }
-  }
-
 
   inline int8_t readRssiFast()
   {

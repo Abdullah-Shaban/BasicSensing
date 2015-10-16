@@ -19,11 +19,7 @@ implementation {
   components SerialActiveMessageC as AM;
   App.SerialControl -> AM;
   App.SendSweepData -> AM.AMSend[AM_CB_SWEEP_DATA_MSG];
-  App.ReceiveChannelMask -> AM.Receive[AM_CB_CHANNELMASK_MSG];
   App.SerialPacket -> AM;
-
-  components UserButtonC;
-  App.UserButton -> UserButtonC;
 
   components new QueueC(message_t*,MSG_QUEUE_SIZE), new PoolC(message_t,MSG_QUEUE_SIZE);
   App.Queue -> QueueC;
