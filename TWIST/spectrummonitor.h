@@ -68,22 +68,6 @@ enum {
 	// more to follow ...
 };
 
-// NOTE: the beacon payload (beacon_payload_t) is defined in the header file of the BAN app
-// beacon_payload_t is sent over the radio as part of the beacon payload of the BAN
-// The spectrummonitor picks this up, constructs a cb_repo_query_msg_t
-// and sends that to the repo. The repo answers with a cb_channelmask_msg_t.
-// The latter is sent back to the coordinator during its CAP.
-
-// This is sent over the serial line to the repo
-typedef nx_struct cb_repo_query_msg {
-	nx_uint8_t forwarderID;     // TWIST node ID
-	nx_uint8_t forwarderRSSI;   // the RSSI measured on the forwarder while it received the query message
-	nx_uint16_t srcID;          // BAN src ID
-	nx_uint16_t srcPANID;       // BAN src PAN ID
-	nx_uint8_t mode;            // type of request: MODE_CHANNEL_MASK etc.
-	// TODO: add channel -> denoting the channel on which coordinator was heard
-} cb_repo_query_msg_t;
-
 // This is sent over the radio back to the BAN coordinator
 typedef nx_struct cb_channelmask_msg {
 	nx_uint8_t type; // must be AM_CB_CHANNELMASK_MSG

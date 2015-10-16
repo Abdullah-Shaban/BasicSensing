@@ -4,7 +4,7 @@
 #include "message.h"
 #include "app_profile.h"
 
-//#define SPECTRUM_MONITOR_DEBUG 
+//#define SPECTRUM_MONITOR_DEBUG
 
 generic module SpectrumMonitorC(dwell_mode_t DWELL_MODE) {
   uses {
@@ -21,12 +21,11 @@ generic module SpectrumMonitorC(dwell_mode_t DWELL_MODE) {
     interface StdControl as TxControl;
     interface AsyncSplitControl as RxControl;
     interface CC2420Tx;
-    interface CC2420Rx;      
+    interface CC2420Rx;
 
     /* serial */
     interface SplitControl as SerialControl;
     interface AMSend as SendSweepData;
-    interface AMSend as SendRepoQuery;
     interface Receive as ReceiveChannelMask;
     interface Packet as SerialPacket;
   }
@@ -49,19 +48,14 @@ implementation {
   norace bool m_isChannelMaskMsgReady;
   norace uint8_t m_channelMaskMpdu[sizeof(header_154_t) - 1 + sizeof(cb_channelmask_msg_t) + 2]; // extra 2 for MAC CRC
 
-  message_t m_repoQueryMsg;
-  cb_repo_query_msg_t *m_repoQuery;
-
   task void startRxControlTask();
   task void sendDataTask();
   void setNextSweepDataMsg();
   inline int8_t readRssiFast();
-  task void sendRepoQueryTask();
-  task void forwardRepoQueryMsgTask();
 
 # define WDTCONFIG ( WDTCNTCL | WDTSSEL  )
 
-  event void Boot.booted() 
+  event void Boot.booted()
   {
     uint16_t i;
     WDTCTL = WDTPW | WDTCONFIG ;
@@ -71,21 +65,18 @@ implementation {
     call Leds.set(0);
     setNextSweepDataMsg();
     findex = m_seqno = 0;
-    m_repoQuery = (cb_repo_query_msg_t*) call SerialPacket.getPayload(&m_repoQueryMsg, sizeof(cb_repo_query_msg_t));
-    if (m_repoQuery == NULL)
-      call Leds.led0On();
     call SerialControl.start();
   }
 
-  event void SerialControl.startDone(error_t err) 
+  event void SerialControl.startDone(error_t err)
   {
     call UserButton.enable();
     call SpiResource.request();
   }
 
-  event void SpiResource.granted() 
+  event void SpiResource.granted()
   {
-    call CC2420Power.startVReg(); 
+    call CC2420Power.startVReg();
   }
 
   async event void CC2420Power.startVRegDone()
@@ -103,7 +94,7 @@ implementation {
   {
     error_t error;
     call TxControl.start();
-    call SpiResource.release(); // need to be available for RxControl... 
+    call SpiResource.release(); // need to be available for RxControl...
     error = call RxControl.start();
     if (error != SUCCESS)
       call Leds.led0On();
@@ -140,7 +131,7 @@ implementation {
         call CC2420Power.rfOff();
         call CC2420Power.flushRxFifo();
         call CC2420Power.setFrequency(fvector[findex]);
-        call CC2420Power.rxOn();       
+        call CC2420Power.rxOn();
         call Alarm.start(32); // some time for the radio to get ready for RSSI sampling
         return;
       }
@@ -209,7 +200,7 @@ implementation {
         call CC2420Power.rfOff();
         //call CC2420Power.setFrequency(ctrlChannels[m_BANChannelIndex]);
         call CC2420Power.setFrequency(ctrlChannels[m_BANChannelIndex]);
-        call SpiResource.release(); 
+        call SpiResource.release();
         if (call CC2420Tx.loadTXFIFO(m_channelMaskMpdu) != SUCCESS) {
           call Leds.led0On();
           call SpiResource.immediateRequest();
@@ -220,23 +211,8 @@ implementation {
     }
   }
 
-  norace cb_repo_query_msg_t m_repoQueryPayload;
   async event bool CC2420Rx.receive(uint8_t *data, uint16_t time, bool isTimeValid, int8_t rssi)
   {
-    // reveived a message over the radio
-#if 0
-    uint16_t len = data[0];
-    beacon_payload_t *beaconPayload = (beacon_payload_t *) &data[len-sizeof(beacon_payload_t)-1];
-    if (data[1] == 0 && beaconPayload->type == AM_CB_BEACON_MSG && len == 13+sizeof(beacon_payload_t)) 
-    { // it's a beacon of correct size
-      call Leds.led2Toggle();
-      m_BANChannelIndex = ctrlChannelIndex; // THIS DOESN'T WORK (channel is always set to 11)
-      m_repoQueryPayload.srcID = *((nx_uint16_t*) &data[6]);
-      m_repoQueryPayload.srcPANID = *((nx_uint16_t*) &data[4]);
-      m_repoQueryPayload.forwarderRSSI = rssi;
-      post forwardRepoQueryMsgTask();
-    }
-#endif
 
     atomic {
       uint16_t i,j;
@@ -244,7 +220,7 @@ implementation {
 
       cb_channelmask_msg_t mask;
       mask.type = AM_CB_CHANNELMASK_MSG;
-      m_BANChannelIndex = ctrlChannelIndex; 
+      m_BANChannelIndex = ctrlChannelIndex;
       //if (m_BANChannelIndex == 0) mask.data = 2; else mask.data = 1; // toggle between channel 11 and 12
       j = 0;
       for (i=0; i<sizeof(m_last_sweep_rssi); i++)
@@ -257,19 +233,6 @@ implementation {
     }
 
     return FALSE;
-  }
-
-  task void forwardRepoQueryMsgTask()
-  {
-    // fake a cb_repo_query_msg_t
-    m_repoQuery->forwarderID = m_repoQueryPayload.forwarderID;   // TWIST node ID
-    m_repoQuery->forwarderRSSI = m_repoQueryPayload.forwarderRSSI;   // TWIST node ID
-    m_repoQuery->srcID = m_repoQueryPayload.srcID;      // BAN src ID
-    m_repoQuery->srcPANID = m_repoQueryPayload.srcPANID;   // BAN src PAN ID
-    m_repoQuery->mode = m_repoQueryPayload.mode;        // type of request: MODE_CHANNEL_MASK etc.
-    if (call SendRepoQuery.send(AM_BROADCAST_ADDR, &m_repoQueryMsg, sizeof(cb_repo_query_msg_t)) != SUCCESS) {
-      post forwardRepoQueryMsgTask();
-    }
   }
 
   task void sendDataTask()
@@ -291,16 +254,16 @@ implementation {
   }
 
   event void SendSweepData.sendDone(message_t* bufPtr, error_t error) {
-    if (error != SUCCESS) 
+    if (error != SUCCESS)
       call Leds.led0On();
     call Pool.put(bufPtr);
     if (!call Queue.empty())
-      if (call SendSweepData.send(AM_BROADCAST_ADDR, call Queue.dequeue(), sizeof(cb_sweep_data_msg_t)) != SUCCESS) 
+      if (call SendSweepData.send(AM_BROADCAST_ADDR, call Queue.dequeue(), sizeof(cb_sweep_data_msg_t)) != SUCCESS)
         call Leds.led0On();
   }
 
-  event message_t* ReceiveChannelMask.receive(message_t* bufPtr, 
-        void* payload, uint8_t len) 
+  event message_t* ReceiveChannelMask.receive(message_t* bufPtr,
+        void* payload, uint8_t len)
   {
     // received channel mask reply over serial line
     header_154_t *header = (header_154_t*) &m_channelMaskMpdu;
@@ -325,7 +288,7 @@ implementation {
       memcpy(maskRadio, payload, len);
     maskRadio->type = AM_CB_CHANNELMASK_MSG;
 
-    // message will be sent from Alarm eventhandler above, 
+    // message will be sent from Alarm eventhandler above,
     // which notices that m_isChannelMaskMsgReady is TRUE
 
     return bufPtr;
@@ -339,7 +302,7 @@ implementation {
   async event void CC2420Tx.sendDone(uint8_t *data, uint16_t time, error_t error) {
     m_isChannelMaskMsgReady = FALSE;
     call CC2420Power.flushRxFifo();
-    call CC2420Power.rxOn(); 
+    call CC2420Power.rxOn();
     if (error == SUCCESS)
       call Leds.led1Toggle();
     call Alarm.startAt(call Alarm.getNow(), SAMPLING_PERIOD); // continue with noise sampling
@@ -349,7 +312,7 @@ implementation {
   async event void CC2420Tx.transmissionStarted ( uint8_t *data ) {}
   async event void CC2420Tx.transmittedSFD ( uint32_t time, uint8_t *data ) {}
 
-  /* DEBUGGING: if you press the user button then a cb_repo_query_msg 
+  /* DEBUGGING: if you press the user button then a cb_repo_query_msg
    * will be created and sent over the serial line. */
 
   event void UserButton.notify(button_state_t val)
@@ -357,30 +320,12 @@ implementation {
      if (val == BUTTON_PRESSED) {
        cb_channelmask_msg_t mask;
        mask.type = AM_CB_CHANNELMASK_MSG;
-       mask.data = 0x0002; 
-       // fake a cb_repo_query_msg_t
-/*       call UserButton.disable();*/
-/*       m_repoQuery->forwarderID = TOS_NODE_ID;   // TWIST node ID*/
-/*       m_repoQuery->srcID = 17;      // BAN src ID*/
-/*       m_repoQuery->srcPANID = 1234;   // BAN src PAN ID*/
-/*       m_repoQuery->mode = 1;        // type of request: MODE_CHANNEL_MASK etc.*/
-/*       if (call SendRepoQuery.send(AM_BROADCAST_ADDR, &m_repoQueryMsg, sizeof(cb_repo_query_msg_t)) != SUCCESS)*/
-/*         post sendRepoQueryTask();*/
+       mask.data = 0x0002;
        signal ReceiveChannelMask.receive(0,&mask,sizeof(cb_channelmask_msg_t));
        m_isChannelMaskMsgReady = TRUE;
      }
   }
 
-  task void sendRepoQueryTask()
-  {
-    if (call SendRepoQuery.send(AM_BROADCAST_ADDR, &m_repoQueryMsg, sizeof(cb_repo_query_msg_t)) != SUCCESS)
-      post sendRepoQueryTask();
-/*    call UserButton.enable();*/
-  }
-
-  event void SendRepoQuery.sendDone(message_t* bufPtr, error_t error) 
-  {
-  }
 
   inline int8_t readRssiFast()
   {
@@ -388,25 +333,25 @@ implementation {
     // read (we provide the clock by sending two dummy bytes)
     // this now takes only 13 us !
     int8_t rssi;
-    //return call CC2420Power.rssiFast(); 
+    //return call CC2420Power.rssiFast();
     P4OUT &= ~0x04;      // clear CSN, CS low
     // write address 0x53  (0x40 for register read, 0x13 for RSSI register address)
     U0TXBUF = 0x53;
-    // wait until data has moved from UxTXBUF to the TX shift register 
+    // wait until data has moved from UxTXBUF to the TX shift register
     // and UxTXBUF is ready for new data. It doesnot indicate RX/TX completion.
-    while (!(IFG1 & UTXIFG0))  
+    while (!(IFG1 & UTXIFG0))
       ;
     U0TXBUF = 0;
-    while (!(IFG1 & UTXIFG0))  
+    while (!(IFG1 & UTXIFG0))
       ;
     U0TXBUF = 0;
-    while (!(IFG1 & UTXIFG0))  
+    while (!(IFG1 & UTXIFG0))
       ;
     while (!(U0TCTL & TXEPT))
       ;
     rssi = U0RXBUF;
     P4OUT |= 0x04;      // CS high
-    return rssi; 
+    return rssi;
   }
 
   void setNextSweepDataMsg()
