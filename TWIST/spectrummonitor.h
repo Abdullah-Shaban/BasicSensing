@@ -17,8 +17,8 @@ typedef enum {
 } dwell_mode_t;
 
 enum {
-	SAMPLING_PERIOD = (200 / NUM_FREQUENCIES), // ticks of ACLK, which runs at 32768 Hz, use values below 64 at your own risk!
-	DWELL_TIME = 327, // the time we sample a given frequency, in ticks of which runs at 32768 Hz. MUST be smaller than SAMPLING_PERIOD! (set to zero if you only want a single sample)
+	SAMPLING_PERIOD = (500 / NUM_FREQUENCIES), // ticks of ACLK, which runs at 32768 Hz, use values below 64 at your own risk!
+	DWELL_TIME = 32, // the time we sample a given frequency, in ticks of which runs at 32768 Hz. MUST be smaller than SAMPLING_PERIOD! (set to zero if you only want a single sample)
 	MSG_QUEUE_SIZE = 10,
 
 	NO_ERROR = 0,
