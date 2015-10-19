@@ -41,10 +41,10 @@ ENV PYTHONPATH=$PYTHONPATH:$TINYOS_ROOT_DIR/support/sdk/python
 ENV HOME=/home/wta
 
 # Wireless Testbed Academy
-ADD . /home/wta/BasicCR
-RUN chown wta:wta -R /home/wta/BasicCR
+ADD . /home/wta/BasicSensing
+RUN chown wta:wta -R /home/wta/BasicSensing
 
-WORKDIR /home/wta/BasicCR
+WORKDIR /home/wta/BasicSensing
 USER wta
 
 CMD  /usr/sbin/sshd -D
