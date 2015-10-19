@@ -16,6 +16,7 @@ RUN apt-get install -y nesc tinyos-tools-devel gcc-msp430
 
 # Other packages
 RUN apt-get install -y git-core build-essential
+RUN apt-get install -y python-pip python-dev libxml2-dev libxslt1-dev libz-dev
 
 RUN locale-gen en_US.UTF-8
 
@@ -43,6 +44,8 @@ ENV HOME=/home/wta
 # Wireless Testbed Academy
 ADD . /home/wta/BasicSensing
 RUN chown wta:wta -R /home/wta/BasicSensing
+
+RUN pip install -r /home/wta/BasicSensing/requirements.txt
 
 WORKDIR /home/wta/BasicSensing
 USER wta

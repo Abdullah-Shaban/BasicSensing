@@ -92,7 +92,7 @@ def login(login=None, password=None, cookie_file=None):
 
 	# Check session:
 	check = twist_session.get(twist_url, verify=False)
-	check_soup = BeautifulSoup(check.text)
+	check_soup = BeautifulSoup(check.text,"lxml")
 	check_soup = check_soup.find(id="menu")
 	for link in check_soup.find_all("a"):
 		if "login" in link["href"]:
@@ -119,7 +119,7 @@ def get_jobs(session):
 	"""
 	jobs_get = session.get(twist_url + "jobs", verify=False)
 	# Process result
-	jobs_soup = BeautifulSoup(jobs_get.text)
+	jobs_soup = BeautifulSoup(jobs_get.text, "lxml")
 	jobs_soup = jobs_soup.find(id="primaryContent")
 	headers = [header.string for header in jobs_soup.find_all("th")]
 	jobs = []
@@ -166,7 +166,7 @@ def get_node_ids(session, job_id):
 		list: List of available telosb nodes.
 	"""
 	current_job = session.get(twist_url + "jobs/control?job_id=" + job_id)
-	job_soup = BeautifulSoup(current_job.text)
+	job_soup = BeautifulSoup(current_job.text, "lxml")
 	job_soup = job_soup.find(id="controlJob-res-p5-field")
 	job_soup = job_soup.find("textarea")
 	node_ids = [int(i) for i in job_soup.text.split(' ')]
