@@ -53,7 +53,7 @@ Email:	michael.mehari@intec.ugent.be
 #include <netlink/msg.h>
 #include <netlink/attr.h>
 
-#include "nl80211.h"
+#include <linux/nl80211.h>
 
 // MACRO DEFINITION
 #define BOLD   				"\033[1m\033[30m"
