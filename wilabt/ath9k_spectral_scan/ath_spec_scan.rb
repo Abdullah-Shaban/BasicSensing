@@ -1,6 +1,7 @@
 defApplication("ath_spec_scan","ath_spec_scan"){ |app|
-	app.description = 'Atheros spectral scanning program'
-	app.binary_path = "ath_spec_scan"
+	app.version(1, 0, 0)
+	app.shortDescription = 'Atheros spectral scanning program'
+	app.path = "ath_spec_scan"
 
 	app.defProperty('phy_name', 'physical interface name of the wireless card (default: phy0)', '-p', :type => :string, :mnemonic => 'p')
 	app.defProperty('fft_period', 'when active and triggered, PHY passes FFT frames to MAC every (fft_period+1)*4uS (default: 15)', '-f', {:type => :integer, :mnemonic => 'f'})
